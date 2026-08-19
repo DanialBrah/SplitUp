@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ExpenseFilters } from "@/components/ExpenseFilters";
 import { GroupNav } from "@/components/GroupNav";
+import { QuickAddExpense, type DisplayExpense } from "@/components/QuickAddExpense";
 import { AppError } from "@/lib/errors";
 import { listExpensesForGroup } from "@/lib/expenses";
 import { getGroupOrThrow } from "@/lib/groups";
-import { formatCents } from "@/lib/money";
 import { requireGroupMember } from "@/lib/session";
 import { parseExpenseQuery } from "@/lib/validation/expense-query";
 
@@ -17,7 +17,7 @@ type Props = {
 
 export default async function GroupDetailPage({ params, searchParams }: Props) {
   const { groupId } = await params;
-  await requireGroupMember(groupId);
+  const member = await requireGroupMember(groupId);
 
   const group = await getGroupOrThrow(groupId).catch((error: unknown) => {
     if (error instanceof AppError && error.status === 404) notFound();
@@ -32,6 +32,19 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
   );
 
   const members = group.members.map((m) => ({ id: m.user.id, name: m.user.name }));
+
+  // Prisma's Decimal (ExpenseSplit.percentage) can't cross the Server->Client
+  // prop boundary, so map to a flat, plain-object shape before handing this
+  // off to the client component below.
+  const displayExpenses: DisplayExpense[] = expenses.map((expense) => ({
+    id: expense.id,
+    description: expense.description,
+    amountCents: expense.amountCents,
+    date: expense.date.toISOString().slice(0, 10),
+    category: expense.category,
+    payerId: expense.payerId,
+    payerName: expense.payer.name,
+  }));
 
   const pageHref = (targetPage: number) => {
     const params = new URLSearchParams(
@@ -55,62 +68,34 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
             Members: {group.members.map((m) => m.user.name).join(", ")}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href={`/groups/${group.id}/edit`}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            Edit
-          </Link>
-          <DeleteButton
-            url={`/api/groups/${group.id}`}
-            confirmMessage={`Delete "${group.name}"? This will also delete all of its expenses.`}
-            redirectTo="/groups"
-          />
-        </div>
+        {member.role === "ADMIN" && (
+          <div className="flex gap-2">
+            <Link
+              href={`/groups/${group.id}/edit`}
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Edit
+            </Link>
+            <DeleteButton
+              url={`/api/groups/${group.id}`}
+              confirmMessage={`Delete "${group.name}"? This will also delete all of its expenses.`}
+              redirectTo="/groups"
+            />
+          </div>
+        )}
       </div>
 
       <GroupNav groupId={group.id} active="expenses" />
 
-      <div className="mt-8 flex items-center justify-between">
+      <div className="mt-8">
         <h2 className="text-lg font-medium text-gray-900">Expenses</h2>
-        <Link
-          href={`/groups/${group.id}/expenses/new`}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          Add expense
-        </Link>
       </div>
 
       <ExpenseFilters members={members} />
 
-      {expenses.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">
-          No expenses match these filters.
-        </p>
-      ) : (
-        <ul className="mt-4 divide-y divide-gray-200 rounded-md border border-gray-200">
-          {expenses.map((expense) => (
-            <li key={expense.id}>
-              <Link
-                href={`/groups/${group.id}/expenses/${expense.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{expense.description}</p>
-                  <p className="text-sm text-gray-500">
-                    {expense.date.toISOString().slice(0, 10)} · {expense.category} ·
-                    paid by {expense.payer.name}
-                  </p>
-                </div>
-                <span className="font-medium text-gray-900">
-                  {formatCents(expense.amountCents)}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="mt-4">
+        <QuickAddExpense groupId={group.id} members={members} expenses={displayExpenses} />
+      </div>
 
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm text-gray-500">

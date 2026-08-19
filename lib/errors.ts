@@ -23,6 +23,6 @@ export function unauthorized(): AppError {
   return new AppError("Authentication required", 401);
 }
 
-export function forbidden(): AppError {
-  return new AppError("You are not a member of this group", 403);
+export function forbidden(message = "You are not a member of this group"): AppError {
+  return new AppError(message, 403);
 }

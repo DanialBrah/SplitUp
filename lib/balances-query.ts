@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { computeNetBalances, computePairwiseDebts } from "@/lib/balances";
+import { computeNetBalances, computePairwiseDebts, simplifyDebts } from "@/lib/balances";
 
 export async function getGroupBalances(groupId: string) {
   const [expenses, settlements] = await Promise.all([
@@ -31,8 +31,11 @@ export async function getGroupBalances(groupId: string) {
     amountCents: e.amountCents,
   }));
 
+  const netBalances = computeNetBalances(expenseInputs, splits, settlements);
+
   return {
-    netBalances: computeNetBalances(expenseInputs, splits, settlements),
+    netBalances,
     pairwiseDebts: computePairwiseDebts(expenseInputs, splits, settlements),
+    settlementSuggestions: simplifyDebts(netBalances),
   };
 }

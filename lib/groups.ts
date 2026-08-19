@@ -34,7 +34,12 @@ export function createGroup(payload: GroupPayload, creatorId: string) {
     data: {
       name: payload.name,
       description: payload.description,
-      members: { create: memberIds.map((userId) => ({ userId })) },
+      members: {
+        create: memberIds.map((userId) => ({
+          userId,
+          role: userId === creatorId ? "ADMIN" : "MEMBER",
+        })),
+      },
     },
     include: groupInclude,
   });
@@ -62,6 +67,13 @@ export async function updateGroup(id: string, payload: GroupPayload) {
       throw conflict(
         "Cannot remove a member who already has expenses recorded in this group"
       );
+    }
+
+    const remainingAdmins = existing.members.filter(
+      (m) => m.role === "ADMIN" && !toRemove.includes(m.userId)
+    );
+    if (remainingAdmins.length === 0) {
+      throw conflict("A group must always have at least one admin");
     }
   }
 

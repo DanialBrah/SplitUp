@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { GroupNav } from "@/components/GroupNav";
+import { SettleSuggestionButton } from "@/components/SettleSuggestionButton";
 import { SettlementForm } from "@/components/SettlementForm";
 import { getGroupBalances } from "@/lib/balances-query";
 import { AppError } from "@/lib/errors";
@@ -20,7 +21,7 @@ export default async function GroupBalancesPage({ params }: Props) {
     throw error;
   });
 
-  const [{ netBalances, pairwiseDebts }, settlements] = await Promise.all([
+  const [{ netBalances, pairwiseDebts, settlementSuggestions }, settlements] = await Promise.all([
     getGroupBalances(groupId),
     listSettlementsForGroup(groupId),
   ]);
@@ -83,6 +84,40 @@ export default async function GroupBalancesPage({ params }: Props) {
                 <span className="font-medium text-gray-900">
                   {formatCents(d.amountCents)}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-medium text-gray-900">Simplify debts</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          The fewest payments needed to settle everyone up (not necessarily the same
+          as the pairwise list above — this can route a payment through a third
+          person to cancel out a chain of debts).
+        </p>
+        {settlementSuggestions.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-500">Everyone is settled up.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-gray-200 rounded-md border border-gray-200">
+            {settlementSuggestions.map((s) => (
+              <li
+                key={`${s.from}-${s.to}`}
+                className="flex items-center justify-between px-4 py-3 text-sm"
+              >
+                <span>
+                  {nameById.get(s.from)} pays {nameById.get(s.to)}{" "}
+                  <span className="font-medium text-gray-900">
+                    {formatCents(s.amountCents)}
+                  </span>
+                </span>
+                <SettleSuggestionButton
+                  groupId={groupId}
+                  fromUserId={s.from}
+                  toUserId={s.to}
+                  amountCents={s.amountCents}
+                />
               </li>
             ))}
           </ul>

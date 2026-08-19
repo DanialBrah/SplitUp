@@ -26,6 +26,11 @@ enum SplitType {
   PERCENTAGE
 }
 
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -53,10 +58,11 @@ model Group {
 }
 
 model GroupMember {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   groupId  String
   userId   String
-  joinedAt DateTime @default(now())
+  role     GroupRole @default(MEMBER)
+  joinedAt DateTime  @default(now())
 
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id])

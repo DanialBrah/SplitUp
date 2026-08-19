@@ -33,7 +33,10 @@ async function main() {
       name: "Flatmates",
       description: "Shared household expenses",
       members: {
-        create: [alice, bob, carol].map((u) => ({ userId: u.id })),
+        create: [alice, bob, carol].map((u) => ({
+          userId: u.id,
+          role: u.id === alice.id ? "ADMIN" : "MEMBER",
+        })),
       },
     },
   });
@@ -43,7 +46,10 @@ async function main() {
       name: "Bali Trip",
       description: "August 2026 holiday",
       members: {
-        create: [alice, bob, dave].map((u) => ({ userId: u.id })),
+        create: [alice, bob, dave].map((u) => ({
+          userId: u.id,
+          role: u.id === alice.id ? "ADMIN" : "MEMBER",
+        })),
       },
     },
   });

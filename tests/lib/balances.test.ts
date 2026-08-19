@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeNetBalances, computePairwiseDebts } from "@/lib/balances";
+import { computeNetBalances, computePairwiseDebts, simplifyDebts } from "@/lib/balances";
 
 // Shared fixture: Alice pays $20.00 for an expense split only between Bob
 // ($10) and Carol ($10) - Alice is payer only, not a split participant.
@@ -70,6 +70,104 @@ describe("computePairwiseDebts", () => {
     for (const [userId, value] of net) {
       if (value === 0) continue;
       expect(rebuilt.get(userId)).toBe(value);
+    }
+  });
+});
+
+/** Applies every suggestion onto a fresh copy of `balances` and returns the result. */
+function applySuggestions(
+  balances: Map<string, number>,
+  suggestions: { from: string; to: string; amountCents: number }[]
+): Map<string, number> {
+  const result = new Map(balances);
+  for (const s of suggestions) {
+    result.set(s.from, (result.get(s.from) ?? 0) + s.amountCents);
+    result.set(s.to, (result.get(s.to) ?? 0) - s.amountCents);
+  }
+  return result;
+}
+
+describe("simplifyDebts", () => {
+  it("returns nothing when everyone is already settled", () => {
+    expect(simplifyDebts(new Map())).toEqual([]);
+    expect(simplifyDebts(new Map([["alice", 0], ["bob", 0]]))).toEqual([]);
+  });
+
+  it("settles a simple pair in one transaction", () => {
+    const suggestions = simplifyDebts(new Map([["alice", 1000], ["bob", -1000]]));
+    expect(suggestions).toEqual([{ from: "bob", to: "alice", amountCents: 1000 }]);
+  });
+
+  it("produces the exact hand-verified sequence for a 4-person fixture", () => {
+    const suggestions = simplifyDebts(
+      new Map([
+        ["a", 1000],
+        ["b", 500],
+        ["c", -300],
+        ["d", -1200],
+      ])
+    );
+    expect(suggestions).toEqual([
+      { from: "d", to: "a", amountCents: 1000 },
+      { from: "c", to: "b", amountCents: 300 },
+      { from: "d", to: "b", amountCents: 200 },
+    ]);
+  });
+
+  it("documents the known non-minimal case (greedy isn't the true minimum)", () => {
+    // Optimum is 3 transactions ({a,b} and {c,d,e} are each independently
+    // zero-sum: b->a:300, e->c:200, e->d:200) but the greedy heuristic
+    // doesn't search for that partition, so it takes 4. This is expected
+    // greedy behavior, not a regression - see simplifyDebts' docstring.
+    const balances = new Map([
+      ["a", 300],
+      ["b", -300],
+      ["c", 200],
+      ["d", 200],
+      ["e", -400],
+    ]);
+    const suggestions = simplifyDebts(balances);
+    expect(suggestions).toEqual([
+      { from: "e", to: "a", amountCents: 300 },
+      { from: "b", to: "c", amountCents: 200 },
+      { from: "e", to: "d", amountCents: 100 },
+      { from: "b", to: "d", amountCents: 100 },
+    ]);
+    expect(applySuggestions(balances, suggestions)).toEqual(
+      new Map([["a", 0], ["b", 0], ["c", 0], ["d", 0], ["e", 0]])
+    );
+  });
+
+  it("always produces a valid settlement that zeroes every balance (property check)", () => {
+    const fixtures: Map<string, number>[] = [
+      new Map([["a", 500], ["b", -500]]),
+      new Map([["a", 1000], ["b", 500], ["c", -300], ["d", -1200]]),
+      new Map([["a", 700], ["b", 300], ["c", -200], ["d", -300], ["e", -500]]),
+      new Map([["a", 100], ["b", 100], ["c", 100], ["d", -150], ["e", -150]]),
+    ];
+
+    for (const balances of fixtures) {
+      const nonZeroCount = [...balances.values()].filter((v) => v !== 0).length;
+      const suggestions = simplifyDebts(balances);
+
+      expect(suggestions.length).toBeLessThanOrEqual(Math.max(0, nonZeroCount - 1));
+      for (const [, value] of applySuggestions(balances, suggestions)) {
+        expect(value).toBe(0);
+      }
+    }
+  });
+
+  it("resolves ties (equal creditors) into a still-valid settlement", () => {
+    const balances = new Map([
+      ["alice", 500],
+      ["bob", 500],
+      ["carol", -1000],
+    ]);
+    const suggestions = simplifyDebts(balances);
+
+    expect(suggestions.length).toBeLessThanOrEqual(2);
+    for (const [, value] of applySuggestions(balances, suggestions)) {
+      expect(value).toBe(0);
     }
   });
 });

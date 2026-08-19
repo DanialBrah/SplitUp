@@ -18,5 +18,13 @@ export async function requireGroupMember(groupId: string) {
   if (!membership) {
     throw forbidden();
   }
-  return user;
+  return { ...user, role: membership.role };
+}
+
+export async function requireGroupAdmin(groupId: string) {
+  const member = await requireGroupMember(groupId);
+  if (member.role !== "ADMIN") {
+    throw forbidden("Only a group admin can do this");
+  }
+  return member;
 }
