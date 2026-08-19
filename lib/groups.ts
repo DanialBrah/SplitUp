@@ -1,6 +1,7 @@
 import type { GroupRole } from "@/app/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { conflict, notFound } from "@/lib/errors";
+import { wouldLeaveNoAdmins } from "@/lib/group-roles";
 import type { GroupPayload } from "@/lib/validation/group-payload";
 
 const groupInclude = {
@@ -70,10 +71,7 @@ export async function updateGroup(id: string, payload: GroupPayload) {
       );
     }
 
-    const remainingAdmins = existing.members.filter(
-      (m) => m.role === "ADMIN" && !toRemove.includes(m.userId)
-    );
-    if (remainingAdmins.length === 0) {
+    if (wouldLeaveNoAdmins(existing.members, toRemove)) {
       throw conflict("A group must always have at least one admin");
     }
   }
@@ -107,10 +105,11 @@ export async function updateMemberRole(groupId: string, userId: string, role: Gr
   if (membership.role === role) return membership;
 
   if (membership.role === "ADMIN" && role === "MEMBER") {
-    const adminCount = await prisma.groupMember.count({
-      where: { groupId, role: "ADMIN" },
+    const members = await prisma.groupMember.findMany({
+      where: { groupId },
+      select: { userId: true, role: true },
     });
-    if (adminCount <= 1) {
+    if (wouldLeaveNoAdmins(members, [userId])) {
       throw conflict("A group must always have at least one admin");
     }
   }
@@ -155,11 +154,8 @@ export async function removeMember(groupId: string, userId: string) {
     );
   }
 
-  if (membership.role === "ADMIN") {
-    const adminCount = group.members.filter((m) => m.role === "ADMIN").length;
-    if (adminCount <= 1) {
-      throw conflict("A group must always have at least one admin");
-    }
+  if (membership.role === "ADMIN" && wouldLeaveNoAdmins(group.members, [userId])) {
+    throw conflict("A group must always have at least one admin");
   }
 
   await prisma.groupMember.delete({

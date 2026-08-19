@@ -50,7 +50,7 @@ For active schema development instead of a clean checkout, use `npx prisma migra
 npm test
 ```
 
-51 Vitest cases covering split calculation (equal/exact/percentage), money and percentage parsing, business-rule validation, query parsing, and balance/settle-up math (including debt simplification) — all pure functions, no database required. See [Testing](#testing) for what's covered and why.
+58 Vitest cases covering split calculation (equal/exact/percentage), money and percentage parsing, business-rule validation, query parsing, balance/settle-up math (including debt simplification), and the last-admin-guard predicate — all pure functions, no database required. See [Testing](#testing) for what's covered and why.
 
 ## Data model
 
@@ -102,7 +102,13 @@ Every `GroupMember` row carries a `role`: `ADMIN` or `MEMBER`. Renaming or delet
 
 A non-admin hitting an admin-only route gets a `403` with the message "Only a group admin can do this"; a non-member gets "You are not a member of this group." For the API these surface as JSON error bodies. For the `/edit` page specifically, this is caught **inline** rather than left to bubble up to Next's generic `error.tsx` boundary — that boundary is hardcoded to a generic "Something went wrong" message with no path for a specific `error.message` to reach the user, so a thrown 403 there would render as an unhelpful crash screen instead of the plain "Not allowed" message the page shows instead.
 
-`createGroup` sets the creating user's membership row to `ADMIN` and every other initial member to `MEMBER`. There's no promotion UI in this pass and no `Group.creatorId` column — group creation has always been pure runtime logic, never persisted — so the migration that added `role` couldn't reconstruct "who created each existing group." The honest backfill for local/dev data was to promote every pre-existing membership to `ADMIN`, so no group created before this feature existed gets locked out; every group created after it gets exactly one real admin from `createGroup`. `updateGroup` also refuses to save a membership change that would leave a group with zero admins (`409 Conflict`, "A group must always have at least one admin") — without a promotion UI, an admin removing themselves from the member list would otherwise strand that group permanently.
+`createGroup` sets the creating user's membership row to `ADMIN` and every other initial member to `MEMBER`. There's no `Group.creatorId` column — group creation has always been pure runtime logic, never persisted — so the migration that added `role` couldn't reconstruct "who created each existing group." The honest backfill for local/dev data was to promote every pre-existing membership to `ADMIN`, so no group created before this feature existed gets locked out; every group created after it gets exactly one real admin from `createGroup`.
+
+Three places independently guard against a group ending up with zero admins — `updateGroup` (editing the member list can implicitly demote-by-removal), `updateMemberRole` (explicitly demoting someone), and `removeMember` (removing someone outright) — all `409 Conflict`, "A group must always have at least one admin." Rather than duplicate that filter-and-count logic three times, all three call the same pure predicate, `wouldLeaveNoAdmins` in `lib/group-roles.ts` (no Prisma import, unit-tested directly — see [Testing](#testing)), each supplying whatever member list and affected-user-IDs shape it already has on hand.
+
+### Managing membership
+
+`/groups/[id]/members` lists every member with an Admin/Member badge. For admins it also shows, per row, **"Promote to admin" / "Demote to member"** (`PATCH /api/groups/[groupId]/members/[userId]`, `components/MemberRoleButton.tsx`) and **"Remove"** (`DELETE` on the same route, with a confirm dialog, `components/RemoveMemberButton.tsx`), plus an **"Add member"** search-and-add control below the list (`POST /api/groups/[groupId]/members`, `components/AddMemberForm.tsx`) scoped to users not already in the group. All four actions are admin-gated via `requireGroupAdmin` at the API layer, independent of the buttons only being rendered for admins client-side. Removing a member reuses the same "can't remove someone with expenses on record" guard `updateGroup` already had; adding a member rejects a duplicate add with `409` rather than a raw unique-constraint error.
 
 ## Settle-up & balances
 
@@ -140,7 +146,7 @@ Assumptions made where the spec was silent:
 - **Edits are full-replace (`PUT`), not `PATCH`** — simpler, and every form always submits the complete expense/group state anyway.
 - **A group member can't be removed if they already have expenses recorded in that group** (as payer or split participant) — `409 Conflict` rather than silently orphaning data.
 - **A group must have at least one member** to be created; creating a group auto-adds the creator as its sole initial admin.
-- **A group must always have at least one admin.** There's no admin-promotion UI in this pass, so `updateGroup` refuses any membership change that would leave zero admins standing. See [Role-based permissions](#role-based-permissions).
+- **A group must always have at least one admin.** `updateGroup`, `updateMemberRole`, and `removeMember` all refuse any change that would leave zero admins standing. See [Role-based permissions](#role-based-permissions).
 - **Pre-existing groups (created before roles existed) had every member backfilled to `ADMIN`**, since no creator was ever recorded to promote instead. See [Role-based permissions](#role-based-permissions).
 - **Settlements aren't validated against the outstanding balance** — you can record a settlement larger than what's actually owed (it just flips the pairwise sign). A real product would probably warn on this; kept simple here. This applies equally to manual settle-up and to clicking a debt-simplification suggestion.
 - **"Who owes whom" is pairwise-net; debt simplification is greedy, not globally optimal.** The pairwise ledger deliberately doesn't cancel debt across chains on its own. The separate "Simplify debts" suggestions do collapse the whole group down to a near-minimal transaction set, but by a fast greedy heuristic rather than a true (NP-hard) minimum — see [Debt-minimizing settlement](#debt-minimizing-settlement).
@@ -151,8 +157,7 @@ Assumptions made where the spec was silent:
 Left out on purpose:
 
 - **A working deployment and a demo video.** Explicitly excluded from this pass per direction.
-- **Database-backed integration tests.** Testing is scoped to pure functions (split/percentage calculation, money parsing, validation rules, query parsing, balance and debt-simplification math) — see [Testing](#testing). The API routes, auth gating, role enforcement, and the group-member-removal/last-admin rules are exercised manually (smoke-tested end-to-end against a real database, including live login/session-cookie flows and a role-permission curl matrix, during development) but have no automated test coverage. A next step here would be a test database with Prisma's `$transaction`-based rollback-per-test pattern.
-- **Admin promotion/demotion UI.** Roles are currently set only at creation time (creator) or by migration backfill (pre-existing groups); there's no in-app way to make another member an admin or step down as one.
+- **Database-backed integration tests.** Testing is scoped to pure functions (split/percentage calculation, money parsing, validation rules, query parsing, balance/debt-simplification math, and the last-admin-guard predicate) — see [Testing](#testing). The Prisma-wired functions in `lib/groups.ts` that call those pure predicates (`createGroup`, `updateGroup`, `addMember`, `removeMember`, `updateMemberRole`), the API routes, auth gating, and role enforcement are exercised manually (smoke-tested end-to-end against a real database, including live login/session-cookie flows and a full role-permission curl matrix, during development) but have no automated test coverage of their own. A next step here would be a test database with Prisma's `$transaction`-based rollback-per-test pattern.
 
 ## Testing
 
@@ -163,6 +168,7 @@ Left out on purpose:
 - **`validation/expense-query.test.ts`** — query-param parsing: defaults, empty-string stripping, numeric coercion, array-value handling (Next's `searchParams` shape), rejection of invalid values.
 - **`money.test.ts`** — dollar-string-to-cents parsing, rejects malformed/negative input.
 - **`balances.test.ts`** — net-balance and pairwise-debt math against a hand-verified worked example (a $20 expense split between two non-payer members, one of whom later settles up), the zero-sum conservation invariant, and a cross-check that the two computations reconcile with each other; a `simplifyDebts` suite covering the empty/all-zero case, a simple pair, an exact hand-traced 4-person fixture, a reconciliation property check across several fixtures (apply every suggested settlement back onto the original balances and assert everyone lands at exactly zero — the invariant that actually matters, independent of tie-break/ordering details), a bound check (`suggestions.length <= nonZeroCount - 1`), a tie-break case, and the documented 5-person non-minimal-but-correct counterexample described in [Debt-minimizing settlement](#debt-minimizing-settlement).
+- **`group-roles.test.ts`** — the `wouldLeaveNoAdmins` predicate behind every last-admin guard in `lib/groups.ts` ([Role-based permissions](#role-based-permissions)): removing the sole admin, removing a non-admin, a second admin surviving untouched, removing every admin among several affected users at once, removing several non-admins while an admin survives, a no-op empty change, and the vacuous empty-member-list edge case. This is exactly the kind of guard-clause logic (off-by-one in a count, an inverted filter condition, forgetting to exclude the user being changed) an AI-assisted edit could quietly invert, so it's tested as its own unit independent of the three Prisma-wired call sites it protects.
 
 ## Working with AI (Section 6)
 
