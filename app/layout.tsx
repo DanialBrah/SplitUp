@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { auth, signOut } from "@/auth";
+import { SubmitButton } from "@/components/SubmitButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -44,12 +45,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <span className="text-sm text-gray-500">
                   Signed in as {session.user.name}
                 </span>
-                <button
-                  type="submit"
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                <SubmitButton
+                  pendingLabel="Signing out…"
+                  className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  spinnerClassName="h-4 w-4 border-gray-300 border-t-gray-700"
                 >
                   Sign out
-                </button>
+                </SubmitButton>
               </form>
             )}
           </div>
