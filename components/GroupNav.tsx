@@ -2,13 +2,14 @@ import Link from "next/link";
 
 type GroupNavProps = {
   groupId: string;
-  active: "expenses" | "balances" | "insights";
+  active: "expenses" | "balances" | "insights" | "members";
 };
 
 const tabs = [
   { key: "expenses", label: "Expenses", href: (id: string) => `/groups/${id}` },
   { key: "balances", label: "Balances", href: (id: string) => `/groups/${id}/balances` },
   { key: "insights", label: "Insights", href: (id: string) => `/groups/${id}/insights` },
+  { key: "members", label: "Members", href: (id: string) => `/groups/${id}/members` },
 ] as const;
 
 export function GroupNav({ groupId, active }: GroupNavProps) {
