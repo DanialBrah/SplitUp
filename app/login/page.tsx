@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SubmitButton } from "@/components/SubmitButton";
 import { loginAction } from "./actions";
 
 type Props = {
@@ -48,12 +49,7 @@ export default async function LoginPage({ searchParams }: Props) {
             className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
-        <button
-          type="submit"
-          className="w-full rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          Sign in
-        </button>
+        <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>
       </form>
 
       <p className="mt-4 text-sm text-gray-500">
