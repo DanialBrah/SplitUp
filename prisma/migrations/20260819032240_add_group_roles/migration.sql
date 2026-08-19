@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `groupmember` ADD COLUMN `role` ENUM('ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER';
+ALTER TABLE `GroupMember` ADD COLUMN `role` ENUM('ADMIN', 'MEMBER') NOT NULL DEFAULT 'MEMBER';
 
 -- No creator/owner column has ever existed on Group; batch-inserts share a
 -- single joinedAt timestamp, so there's no reliable way to identify "the"
@@ -8,4 +8,4 @@ ALTER TABLE `groupmember` ADD COLUMN `role` ENUM('ADMIN', 'MEMBER') NOT NULL DEF
 -- pre-existing group is locked out of its own admin-only actions. Every
 -- group created AFTER this migration gets exactly one real admin (the
 -- creator) via the updated createGroup().
-UPDATE `groupmember` SET `role` = 'ADMIN';
+UPDATE `GroupMember` SET `role` = 'ADMIN';
