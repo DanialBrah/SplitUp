@@ -4,11 +4,13 @@ import { ExpenseForm } from "@/components/ExpenseForm";
 import { AppError } from "@/lib/errors";
 import { getExpenseOrThrow } from "@/lib/expenses";
 import { getGroupOrThrow } from "@/lib/groups";
+import { requireGroupMember } from "@/lib/session";
 
 type Props = { params: Promise<{ groupId: string; expenseId: string }> };
 
 export default async function ExpenseDetailPage({ params }: Props) {
   const { groupId, expenseId } = await params;
+  await requireGroupMember(groupId);
 
   const [group, expense] = await Promise.all([
     getGroupOrThrow(groupId),
@@ -42,7 +44,12 @@ export default async function ExpenseDetailPage({ params }: Props) {
             payerId: expense.payerId,
             date: expense.date.toISOString().slice(0, 10),
             category: expense.category,
-            splits: expense.splits.map((s) => ({ userId: s.userId })),
+            splitType: expense.splitType,
+            splits: expense.splits.map((s) => ({
+              userId: s.userId,
+              shareCents: s.shareCents,
+              percentage: s.percentage ? s.percentage.toString() : null,
+            })),
           }}
         />
       </div>

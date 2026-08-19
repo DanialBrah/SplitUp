@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { GroupForm } from "@/components/GroupForm";
 import { AppError } from "@/lib/errors";
 import { getGroupOrThrow } from "@/lib/groups";
+import { requireGroupMember } from "@/lib/session";
 import { listUsers } from "@/lib/users";
 
 type Props = { params: Promise<{ groupId: string }> };
 
 export default async function EditGroupPage({ params }: Props) {
   const { groupId } = await params;
+  await requireGroupMember(groupId);
 
   const group = await getGroupOrThrow(groupId).catch((error: unknown) => {
     if (error instanceof AppError && error.status === 404) notFound();

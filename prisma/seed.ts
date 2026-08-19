@@ -1,13 +1,31 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { splitEqually } from "@/lib/split";
+import {
+  parsePercentageToBasisPoints,
+  splitByExactAmounts,
+  splitByPercentages,
+  splitEqually,
+} from "@/lib/split";
+
+const DEMO_PASSWORD = "password123";
 
 async function main() {
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+
   const [alice, bob, carol, dave] = await Promise.all([
-    prisma.user.create({ data: { name: "Alice", email: "alice@example.com" } }),
-    prisma.user.create({ data: { name: "Bob", email: "bob@example.com" } }),
-    prisma.user.create({ data: { name: "Carol", email: "carol@example.com" } }),
-    prisma.user.create({ data: { name: "Dave", email: "dave@example.com" } }),
+    prisma.user.create({
+      data: { name: "Alice", email: "alice@example.com", passwordHash },
+    }),
+    prisma.user.create({
+      data: { name: "Bob", email: "bob@example.com", passwordHash },
+    }),
+    prisma.user.create({
+      data: { name: "Carol", email: "carol@example.com", passwordHash },
+    }),
+    prisma.user.create({
+      data: { name: "Dave", email: "dave@example.com", passwordHash },
+    }),
   ]);
 
   const flatmates = await prisma.group.create({
@@ -67,6 +85,62 @@ async function main() {
       date: new Date("2026-07-20"),
       category: "ACCOMMODATION",
       splits: { create: hotelSplits },
+    },
+  });
+
+  // Unequal split by exact amount: $30.00 as 15/10/5.
+  const taxiSplits = splitByExactAmounts([
+    { userId: alice.id, amountCents: 1500 },
+    { userId: bob.id, amountCents: 1000 },
+    { userId: carol.id, amountCents: 500 },
+  ]);
+  await prisma.expense.create({
+    data: {
+      groupId: flatmates.id,
+      description: "Taxi to airport",
+      amountCents: 3000,
+      payerId: alice.id,
+      date: new Date("2026-08-10"),
+      category: "TRANSPORT",
+      splitType: "EXACT",
+      splits: { create: taxiSplits },
+    },
+  });
+
+  // Unequal split by percentage: $45.00 at 50/30/20%.
+  const cleaningSplits = splitByPercentages(4500, [
+    { userId: alice.id, percentageBps: parsePercentageToBasisPoints("50") },
+    { userId: bob.id, percentageBps: parsePercentageToBasisPoints("30") },
+    { userId: carol.id, percentageBps: parsePercentageToBasisPoints("20") },
+  ]);
+  await prisma.expense.create({
+    data: {
+      groupId: flatmates.id,
+      description: "Cleaning service",
+      amountCents: 4500,
+      payerId: carol.id,
+      date: new Date("2026-08-12"),
+      category: "OTHER",
+      splitType: "PERCENTAGE",
+      splits: {
+        create: cleaningSplits.map((s) => ({
+          userId: s.userId,
+          shareCents: s.shareCents,
+          percentage: (s.percentageBps / 100).toFixed(2),
+        })),
+      },
+    },
+  });
+
+  // Settle-up example: Bob pays Alice back part of what he owes.
+  await prisma.settlement.create({
+    data: {
+      groupId: flatmates.id,
+      fromUserId: bob.id,
+      toUserId: alice.id,
+      amountCents: 500,
+      date: new Date("2026-08-15"),
+      note: "Partial settle-up",
     },
   });
 

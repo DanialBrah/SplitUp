@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ExpenseCategory } from "@/app/generated/prisma/enums";
-import { dollarsToCents, formatCents } from "@/lib/money";
-import { splitEqually } from "@/lib/split";
+import { SplitEditor, type SplitEntry, type SplitType } from "@/components/SplitEditor";
 
 type MemberOption = { id: string; name: string };
 
@@ -19,11 +18,27 @@ type ExpenseFormProps = {
     payerId: string;
     date: string; // "YYYY-MM-DD"
     category: string;
-    splits: { userId: string }[];
+    splitType: string;
+    splits: { userId: string; shareCents: number; percentage: string | null }[];
   };
 };
 
 const categoryOptions = Object.values(ExpenseCategory);
+
+function buildInitialEntries(
+  members: MemberOption[],
+  expense: ExpenseFormProps["expense"]
+): SplitEntry[] {
+  return members.map((m) => {
+    const existing = expense?.splits.find((s) => s.userId === m.id);
+    return {
+      userId: m.id,
+      included: expense ? Boolean(existing) : true,
+      amount: existing ? (existing.shareCents / 100).toFixed(2) : "",
+      percentage: existing?.percentage ?? "",
+    };
+  });
+}
 
 export function ExpenseForm({ mode, groupId, members, expense }: ExpenseFormProps) {
   const router = useRouter();
@@ -36,27 +51,14 @@ export function ExpenseForm({ mode, groupId, members, expense }: ExpenseFormProp
     expense?.date ?? new Date().toISOString().slice(0, 10)
   );
   const [category, setCategory] = useState(expense?.category ?? "OTHER");
-  const [memberIds, setMemberIds] = useState<string[]>(
-    expense ? expense.splits.map((s) => s.userId) : members.map((m) => m.id)
+  const [splitType, setSplitType] = useState<SplitType>(
+    (expense?.splitType as SplitType) ?? "EQUAL"
+  );
+  const [entries, setEntries] = useState<SplitEntry[]>(
+    buildInitialEntries(members, expense)
   );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  function toggleMember(userId: string) {
-    setMemberIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
-  }
-
-  const preview = useMemo(() => {
-    if (memberIds.length === 0) return null;
-    try {
-      const cents = dollarsToCents(amount);
-      return splitEqually(cents, memberIds);
-    } catch {
-      return null;
-    }
-  }, [amount, memberIds]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -69,11 +71,29 @@ export function ExpenseForm({ mode, groupId, members, expense }: ExpenseFormProp
         : `/api/groups/${groupId}/expenses/${expense!.id}`;
     const method = mode === "create" ? "POST" : "PUT";
 
+    const included = entries.filter((e) => e.included);
+    const base = { description, amount, payerId, date, category, splitType };
+
+    let body: object;
+    if (splitType === "EQUAL") {
+      body = { ...base, memberIds: included.map((e) => e.userId) };
+    } else if (splitType === "EXACT") {
+      body = {
+        ...base,
+        splits: included.map((e) => ({ userId: e.userId, amount: e.amount })),
+      };
+    } else {
+      body = {
+        ...base,
+        splits: included.map((e) => ({ userId: e.userId, percentage: e.percentage })),
+      };
+    }
+
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, amount, payerId, date, category, memberIds }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
 
@@ -181,34 +201,14 @@ export function ExpenseForm({ mode, groupId, members, expense }: ExpenseFormProp
         </div>
       </div>
 
-      <div>
-        <span className="block text-sm font-medium text-gray-700">
-          Split equally among
-        </span>
-        <div className="mt-2 space-y-2">
-          {members.map((m) => (
-            <label key={m.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={memberIds.includes(m.id)}
-                onChange={() => toggleMember(m.id)}
-              />
-              {m.name}
-            </label>
-          ))}
-        </div>
-
-        {preview && (
-          <ul className="mt-3 space-y-1 rounded-md bg-gray-50 px-4 py-3 text-sm">
-            {preview.map((s) => (
-              <li key={s.userId} className="flex justify-between">
-                <span>{members.find((m) => m.id === s.userId)?.name}</span>
-                <span>{formatCents(s.shareCents)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <SplitEditor
+        members={members}
+        splitType={splitType}
+        onSplitTypeChange={setSplitType}
+        entries={entries}
+        onEntriesChange={setEntries}
+        amount={amount}
+      />
 
       <button
         type="submit"

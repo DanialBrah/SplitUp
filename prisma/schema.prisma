@@ -20,15 +20,24 @@ enum ExpenseCategory {
   OTHER
 }
 
-model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+enum SplitType {
+  EQUAL
+  EXACT
+  PERCENTAGE
+}
 
-  memberships   GroupMember[]
-  expensesPaid  Expense[]      @relation("ExpensePayer")
-  expenseShares ExpenseSplit[]
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  memberships     GroupMember[]
+  expensesPaid    Expense[]      @relation("ExpensePayer")
+  expenseShares   ExpenseSplit[]
+  settlementsFrom Settlement[]   @relation("SettlementFrom")
+  settlementsTo   Settlement[]   @relation("SettlementTo")
 }
 
 model Group {
@@ -38,8 +47,9 @@ model Group {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  members  GroupMember[]
-  expenses Expense[]
+  members     GroupMember[]
+  expenses    Expense[]
+  settlements Settlement[]
 }
 
 model GroupMember {
@@ -63,6 +73,7 @@ model Expense {
   payerId     String
   date        DateTime        @db.Date
   category    ExpenseCategory @default(OTHER)
+  splitType   SplitType       @default(EQUAL)
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -71,18 +82,38 @@ model Expense {
   splits ExpenseSplit[]
 
   @@index([groupId, date])
+  @@index([groupId, category])
+  @@index([groupId, payerId])
   @@index([payerId])
 }
 
 model ExpenseSplit {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   expenseId  String
   userId     String
   shareCents Int
+  percentage Decimal? @db.Decimal(5, 2)
 
   expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id])
 
   @@unique([expenseId, userId])
   @@index([userId])
+}
+
+model Settlement {
+  id          String   @id @default(cuid())
+  groupId     String
+  fromUserId  String
+  toUserId    String
+  amountCents Int
+  date        DateTime @db.Date
+  note        String?
+  createdAt   DateTime @default(now())
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fromUser User  @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser   User  @relation("SettlementTo", fields: [toUserId], references: [id])
+
+  @@index([groupId])
 }

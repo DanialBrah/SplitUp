@@ -3,6 +3,7 @@ import { AppError } from "@/lib/errors";
 import {
   assertNoDuplicateSplitMembers,
   assertPayerIsMember,
+  assertPercentagesSumTo100,
   assertPositiveAmount,
   assertSplitMembersAreGroupMembers,
   assertSplitSumsToTotal,
@@ -72,5 +73,15 @@ describe("assertNoDuplicateSplitMembers", () => {
       { userId: "alice", shareCents: 500 },
     ];
     expect(() => assertNoDuplicateSplitMembers(splits)).toThrow(AppError);
+  });
+});
+
+describe("assertPercentagesSumTo100", () => {
+  it("rejects percentages that don't sum to 100", () => {
+    expect(() => assertPercentagesSumTo100([5000, 4000])).toThrow(AppError);
+  });
+
+  it("accepts percentages summing to exactly 100", () => {
+    expect(() => assertPercentagesSumTo100([3333, 3333, 3334])).not.toThrow();
   });
 });

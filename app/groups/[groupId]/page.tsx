@@ -1,22 +1,47 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
+import { ExpenseFilters } from "@/components/ExpenseFilters";
+import { GroupNav } from "@/components/GroupNav";
 import { AppError } from "@/lib/errors";
 import { listExpensesForGroup } from "@/lib/expenses";
 import { getGroupOrThrow } from "@/lib/groups";
 import { formatCents } from "@/lib/money";
+import { requireGroupMember } from "@/lib/session";
+import { parseExpenseQuery } from "@/lib/validation/expense-query";
 
-type Props = { params: Promise<{ groupId: string }> };
+type Props = {
+  params: Promise<{ groupId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default async function GroupDetailPage({ params }: Props) {
+export default async function GroupDetailPage({ params, searchParams }: Props) {
   const { groupId } = await params;
+  await requireGroupMember(groupId);
 
   const group = await getGroupOrThrow(groupId).catch((error: unknown) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
   });
 
-  const expenses = await listExpensesForGroup(groupId);
+  const rawQuery = await searchParams;
+  const query = parseExpenseQuery(rawQuery);
+  const { expenses, total, page, totalPages } = await listExpensesForGroup(
+    groupId,
+    query
+  );
+
+  const members = group.members.map((m) => ({ id: m.user.id, name: m.user.name }));
+
+  const pageHref = (targetPage: number) => {
+    const params = new URLSearchParams(
+      Object.entries(rawQuery).flatMap(([k, v]) =>
+        v === undefined ? [] : [[k, Array.isArray(v) ? v[0] : v]]
+      ) as [string, string][]
+    );
+    params.set("page", String(targetPage));
+    return `?${params.toString()}`;
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -45,6 +70,8 @@ export default async function GroupDetailPage({ params }: Props) {
         </div>
       </div>
 
+      <GroupNav groupId={group.id} active="expenses" />
+
       <div className="mt-8 flex items-center justify-between">
         <h2 className="text-lg font-medium text-gray-900">Expenses</h2>
         <Link
@@ -55,8 +82,12 @@ export default async function GroupDetailPage({ params }: Props) {
         </Link>
       </div>
 
+      <ExpenseFilters members={members} />
+
       {expenses.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500">No expenses yet.</p>
+        <p className="mt-4 text-sm text-gray-500">
+          No expenses match these filters.
+        </p>
       ) : (
         <ul className="mt-4 divide-y divide-gray-200 rounded-md border border-gray-200">
           {expenses.map((expense) => (
@@ -79,6 +110,32 @@ export default async function GroupDetailPage({ params }: Props) {
             </li>
           ))}
         </ul>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+          <span>
+            Page {page} of {totalPages} ({total} total)
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link
+                href={pageHref(page - 1)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              >
+                Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={pageHref(page + 1)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

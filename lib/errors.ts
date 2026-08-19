@@ -18,3 +18,11 @@ export function notFound(entity: string): AppError {
 export function conflict(message: string): AppError {
   return new AppError(message, 409);
 }
+
+export function unauthorized(): AppError {
+  return new AppError("Authentication required", 401);
+}
+
+export function forbidden(): AppError {
+  return new AppError("You are not a member of this group", 403);
+}

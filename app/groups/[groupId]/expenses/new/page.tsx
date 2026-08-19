@@ -2,11 +2,13 @@ import { notFound } from "next/navigation";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { AppError } from "@/lib/errors";
 import { getGroupOrThrow } from "@/lib/groups";
+import { requireGroupMember } from "@/lib/session";
 
 type Props = { params: Promise<{ groupId: string }> };
 
 export default async function NewExpensePage({ params }: Props) {
   const { groupId } = await params;
+  await requireGroupMember(groupId);
 
   const group = await getGroupOrThrow(groupId).catch((error: unknown) => {
     if (error instanceof AppError && error.status === 404) notFound();

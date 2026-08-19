@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { listGroups } from "@/lib/groups";
+import { requireUser } from "@/lib/session";
 
 export default async function GroupsPage() {
-  const groups = await listGroups();
+  const user = await requireUser();
+  const groups = await listGroups(user.id);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">

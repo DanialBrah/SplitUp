@@ -3,11 +3,14 @@ import { conflict, notFound } from "@/lib/errors";
 import type { GroupPayload } from "@/lib/validation/group-payload";
 
 const groupInclude = {
-  members: { include: { user: true } },
+  members: {
+    include: { user: { select: { id: true, name: true, email: true } } },
+  },
 } as const;
 
-export function listGroups() {
+export function listGroups(userId: string) {
   return prisma.group.findMany({
+    where: { members: { some: { userId } } },
     orderBy: { createdAt: "desc" },
     include: groupInclude,
   });
@@ -22,12 +25,16 @@ export async function getGroupOrThrow(id: string) {
   return group;
 }
 
-export function createGroup(payload: GroupPayload) {
+export function createGroup(payload: GroupPayload, creatorId: string) {
+  const memberIds = payload.memberIds.includes(creatorId)
+    ? payload.memberIds
+    : [...payload.memberIds, creatorId];
+
   return prisma.group.create({
     data: {
       name: payload.name,
       description: payload.description,
-      members: { create: payload.memberIds.map((userId) => ({ userId })) },
+      members: { create: memberIds.map((userId) => ({ userId })) },
     },
     include: groupInclude,
   });

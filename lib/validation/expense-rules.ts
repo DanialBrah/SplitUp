@@ -41,3 +41,10 @@ export function assertSplitSumsToTotal(splits: Share[], totalCents: number): voi
     );
   }
 }
+
+export function assertPercentagesSumTo100(basisPoints: number[]): void {
+  const sum = basisPoints.reduce((total, bps) => total + bps, 0);
+  if (sum !== 10000) {
+    throw badRequest(`Percentages must add up to 100 (got ${sum / 100})`);
+  }
+}

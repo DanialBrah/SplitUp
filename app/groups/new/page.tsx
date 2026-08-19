@@ -1,7 +1,9 @@
 import { GroupForm } from "@/components/GroupForm";
+import { requireUser } from "@/lib/session";
 import { listUsers } from "@/lib/users";
 
 export default async function NewGroupPage() {
+  await requireUser();
   const users = await listUsers();
 
   return (
