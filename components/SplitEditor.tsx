@@ -78,6 +78,22 @@ export function SplitEditor({
   const previewSum = preview?.reduce((sum, s) => sum + s.shareCents, 0) ?? 0;
   const previewMismatch = preview !== null && previewSum !== totalCents;
 
+  const percentageTotal = included.reduce((sum, e) => {
+    const value = Number(e.percentage);
+    return sum + (Number.isFinite(value) ? value : 0);
+  }, 0);
+  const percentageRemaining = Math.round((100 - percentageTotal) * 100) / 100;
+
+  let remainingMessage = `${percentageRemaining}% remaining`;
+  let remainingClassName = "mt-2 text-xs text-gray-500";
+  if (percentageRemaining === 0) {
+    remainingMessage = "100% allocated";
+    remainingClassName = "mt-2 text-xs text-green-700";
+  } else if (percentageRemaining < 0) {
+    remainingMessage = `${Math.abs(percentageRemaining)}% over 100%`;
+    remainingClassName = "mt-2 text-xs text-red-600";
+  }
+
   return (
     <div>
       <span className="block text-sm font-medium text-gray-700">Split</span>
@@ -139,6 +155,10 @@ export function SplitEditor({
           );
         })}
       </div>
+
+      {splitType === "PERCENTAGE" && (
+        <p className={remainingClassName}>{remainingMessage}</p>
+      )}
 
       {preview && (
         <div className="mt-3 rounded-md bg-gray-50 px-4 py-3 text-sm">
