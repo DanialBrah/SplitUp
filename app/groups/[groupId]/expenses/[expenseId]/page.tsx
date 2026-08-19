@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { ExpenseForm } from "@/components/ExpenseForm";
@@ -24,7 +25,13 @@ export default async function ExpenseDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-center justify-between">
+      <Link
+        href={`/groups/${groupId}`}
+        className="text-sm text-gray-500 hover:text-gray-700"
+      >
+        ← Back to {group.name}
+      </Link>
+      <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">{expense.description}</h1>
         <DeleteButton
           url={`/api/groups/${groupId}/expenses/${expenseId}`}

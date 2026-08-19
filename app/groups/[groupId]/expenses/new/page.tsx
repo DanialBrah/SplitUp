@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { AppError } from "@/lib/errors";
@@ -19,7 +20,13 @@ export default async function NewExpensePage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900">
+      <Link
+        href={`/groups/${groupId}`}
+        className="text-sm text-gray-500 hover:text-gray-700"
+      >
+        ← Back to {group.name}
+      </Link>
+      <h1 className="mt-2 text-2xl font-semibold text-gray-900">
         Add expense to {group.name}
       </h1>
       <div className="mt-6">

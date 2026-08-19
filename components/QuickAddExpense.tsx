@@ -108,9 +108,9 @@ export function QuickAddExpense({ groupId, members, expenses }: QuickAddExpenseP
         </button>
         <Link
           href={`/groups/${groupId}/expenses/new`}
-          className="text-sm text-gray-500 underline hover:text-gray-700"
+          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
-          Need an uneven split? Use the full form →
+          Add expense
         </Link>
       </div>
 

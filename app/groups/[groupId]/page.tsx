@@ -58,7 +58,10 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-start justify-between">
+      <Link href="/groups" className="text-sm text-gray-500 hover:text-gray-700">
+        ← All groups
+      </Link>
+      <div className="mt-2 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">{group.name}</h1>
           {group.description && (
