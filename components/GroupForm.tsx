@@ -23,8 +23,18 @@ export function GroupForm({ mode, users, group }: GroupFormProps) {
   const [memberIds, setMemberIds] = useState<string[]>(
     group?.members.map((m) => m.userId) ?? []
   );
+  const [memberSearch, setMemberSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const query = memberSearch.trim().toLowerCase();
+  const filteredUsers = query
+    ? users.filter(
+        (u) =>
+          u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query)
+      )
+    : users;
+  const selectedUsers = users.filter((u) => memberIds.includes(u.id));
 
   function toggleMember(userId: string) {
     setMemberIds((prev) =>
@@ -97,17 +107,33 @@ export function GroupForm({ mode, users, group }: GroupFormProps) {
 
       <div>
         <span className="block text-sm font-medium text-gray-700">Members</span>
-        <div className="mt-2 space-y-2">
-          {users.map((user) => (
-            <label key={user.id} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={memberIds.includes(user.id)}
-                onChange={() => toggleMember(user.id)}
-              />
-              {user.name} <span className="text-gray-400">({user.email})</span>
-            </label>
-          ))}
+        {selectedUsers.length > 0 && (
+          <p className="mt-1 text-xs text-gray-500">
+            Selected: {selectedUsers.map((u) => u.name).join(", ")}
+          </p>
+        )}
+        <input
+          type="text"
+          value={memberSearch}
+          onChange={(e) => setMemberSearch(e.target.value)}
+          placeholder="Search by name or email…"
+          className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+        <div className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+          {filteredUsers.length === 0 ? (
+            <p className="text-sm text-gray-500">No users match &quot;{memberSearch}&quot;.</p>
+          ) : (
+            filteredUsers.map((user) => (
+              <label key={user.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={memberIds.includes(user.id)}
+                  onChange={() => toggleMember(user.id)}
+                />
+                {user.name} <span className="text-gray-400">({user.email})</span>
+              </label>
+            ))
+          )}
         </div>
       </div>
 
