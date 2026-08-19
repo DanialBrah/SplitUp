@@ -27,6 +27,14 @@ export function ExpenseFilters({ members }: ExpenseFiltersProps) {
     router.push(`${pathname}?${params.toString()}`);
   }
 
+  function resetFilters() {
+    router.push(pathname);
+  }
+
+  const hasActiveFilters = ["category", "payerId", "dateFrom", "dateTo"].some((key) =>
+    Boolean(searchParams.get(key))
+  );
+
   return (
     <div className="mt-4 flex flex-wrap items-end gap-3">
       <div>
@@ -104,6 +112,16 @@ export function ExpenseFilters({ members }: ExpenseFiltersProps) {
           <option value="asc">Oldest / lowest first</option>
         </select>
       </div>
+
+      {hasActiveFilters && (
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="text-sm text-gray-500 underline hover:text-gray-700"
+        >
+          Reset filters
+        </button>
+      )}
     </div>
   );
 }

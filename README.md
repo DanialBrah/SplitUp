@@ -121,7 +121,7 @@ Assumptions made where the spec was silent:
 - **A group must have at least one member** to be created; creating a group auto-adds the creator.
 - **Settlements aren't validated against the outstanding balance** — you can record a settlement larger than what's actually owed (it just flips the pairwise sign). A real product would probably warn on this; kept simple here.
 - **"Who owes whom" is pairwise-net, not minimized.** Deliberately not the harder Tier 3 debt-simplification problem.
-- **No user registration/password reset** — only the four seeded demo accounts exist, matching the spec's "seeded users with a session is plenty."
+- **Registration exists (`/register`), password reset doesn't.** New accounts start with zero groups — join one by having an existing member add you via the group edit page's member picker, or create your own (auto-adds you as a member). This goes beyond the spec's "seeded users with a session is plenty," but was straightforward to add on top of the Credentials setup.
 - **User CRUD isn't part of the required scope** (only Groups and Expenses are) — users only exist via the seed script.
 
 Left out on purpose (Tier 3, not required to pass):
