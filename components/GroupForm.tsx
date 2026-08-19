@@ -14,14 +14,15 @@ type GroupFormProps = {
     description: string | null;
     members: { userId: string }[];
   };
+  currentUserId?: string;
 };
 
-export function GroupForm({ mode, users, group }: GroupFormProps) {
+export function GroupForm({ mode, users, group, currentUserId }: GroupFormProps) {
   const router = useRouter();
   const [name, setName] = useState(group?.name ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
   const [memberIds, setMemberIds] = useState<string[]>(
-    group?.members.map((m) => m.userId) ?? []
+    group?.members.map((m) => m.userId) ?? (currentUserId ? [currentUserId] : [])
   );
   const [memberSearch, setMemberSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,7 @@ export function GroupForm({ mode, users, group }: GroupFormProps) {
   const selectedUsers = users.filter((u) => memberIds.includes(u.id));
 
   function toggleMember(userId: string) {
+    if (mode === "create" && userId === currentUserId) return;
     setMemberIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
@@ -123,16 +125,24 @@ export function GroupForm({ mode, users, group }: GroupFormProps) {
           {filteredUsers.length === 0 ? (
             <p className="text-sm text-gray-500">No users match &quot;{memberSearch}&quot;.</p>
           ) : (
-            filteredUsers.map((user) => (
-              <label key={user.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={memberIds.includes(user.id)}
-                  onChange={() => toggleMember(user.id)}
-                />
-                {user.name} <span className="text-gray-400">({user.email})</span>
-              </label>
-            ))
+            filteredUsers.map((user) => {
+              const isLockedCreator = mode === "create" && user.id === currentUserId;
+              return (
+                <label
+                  key={user.id}
+                  className={`flex items-center gap-2 text-sm ${isLockedCreator ? "text-gray-500" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={memberIds.includes(user.id)}
+                    disabled={isLockedCreator}
+                    onChange={() => toggleMember(user.id)}
+                  />
+                  {user.name} <span className="text-gray-400">({user.email})</span>
+                  {isLockedCreator && <span className="text-gray-400">— you</span>}
+                </label>
+              );
+            })
           )}
         </div>
       </div>
