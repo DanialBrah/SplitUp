@@ -15,6 +15,13 @@ type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default async function GroupDetailPage({ params, searchParams }: Props) {
   const { groupId } = await params;
   const member = await requireGroupMember(groupId);
@@ -40,7 +47,7 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
     id: expense.id,
     description: expense.description,
     amountCents: expense.amountCents,
-    date: expense.date.toISOString().slice(0, 10),
+    date: toLocalDateString(expense.date),
     category: expense.category,
     payerId: expense.payerId,
     payerName: expense.payer.name,

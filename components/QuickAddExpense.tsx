@@ -26,6 +26,13 @@ type QuickAddExpenseProps = {
   expenses: DisplayExpense[];
 };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const categoryOptions = Object.values(ExpenseCategory);
 
 export function QuickAddExpense({ groupId, members, expenses }: QuickAddExpenseProps) {
@@ -42,7 +49,7 @@ export function QuickAddExpense({ groupId, members, expenses }: QuickAddExpenseP
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [payerId, setPayerId] = useState(members[0]?.id ?? "");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toLocalDateString(new Date()));
   const [category, setCategory] = useState("OTHER");
   const [memberIds, setMemberIds] = useState<string[]>(members.map((m) => m.id));
 
