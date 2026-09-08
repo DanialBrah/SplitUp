@@ -9,6 +9,13 @@ import { requireGroupMember } from "@/lib/session";
 
 type Props = { params: Promise<{ groupId: string; expenseId: string }> };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default async function ExpenseDetailPage({ params }: Props) {
   const { groupId, expenseId } = await params;
   await requireGroupMember(groupId);
@@ -49,7 +56,7 @@ export default async function ExpenseDetailPage({ params }: Props) {
             description: expense.description,
             amountCents: expense.amountCents,
             payerId: expense.payerId,
-            date: expense.date.toISOString().slice(0, 10),
+            date: toLocalDateString(expense.date),
             category: expense.category,
             splitType: expense.splitType,
             splits: expense.splits.map((s) => ({

@@ -2,7 +2,7 @@
 
 A lightweight shared-expense tracker: sign in, create a group, add expenses (split equally, by exact amount, or by percentage), record who paid, see per-member balances and "who owes whom" (with a one-click debt-simplification suggestion), settle up, and browse a group's spending by category.
 
-Built for the AIngineer take-home assessment. **Tier 1 (Foundation), Tier 2 (Strong), and Tier 3 (Standout) are all complete** — every extension option offered at each tier was built rather than just the required one (Tier 2: balance summary, settle-up, unequal splits, category breakdown; Tier 3: debt-minimizing settlement, role-based permissions, optimistic UI with rollback). The only things intentionally left out are a deployed instance and a demo video. See [Tier reached & assumptions](#tier-reached--assumptions) for full scope details and what's intentionally left out.
+**Tier 1 (Foundation), Tier 2 (Strong), and Tier 3 (Standout) are all complete** — every extension option offered at each tier was built rather than just the required one (Tier 2: balance summary, settle-up, unequal splits, category breakdown; Tier 3: debt-minimizing settlement, role-based permissions, optimistic UI with rollback). The only things intentionally left out are a deployed instance and a demo video. See [Tier reached & assumptions](#tier-reached--assumptions) for full scope details and what's intentionally left out.
 
 ## Tech stack
 

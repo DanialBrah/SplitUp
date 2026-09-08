@@ -23,6 +23,13 @@ type ExpenseFormProps = {
   };
 };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const categoryOptions = Object.values(ExpenseCategory);
 
 function buildInitialEntries(
@@ -48,7 +55,7 @@ export function ExpenseForm({ mode, groupId, members, expense }: ExpenseFormProp
   );
   const [payerId, setPayerId] = useState(expense?.payerId ?? members[0]?.id ?? "");
   const [date, setDate] = useState(
-    expense?.date ?? new Date().toISOString().slice(0, 10)
+    expense?.date ?? toLocalDateString(new Date())
   );
   const [category, setCategory] = useState(expense?.category ?? "OTHER");
   const [splitType, setSplitType] = useState<SplitType>(

@@ -12,6 +12,13 @@ import { listSettlementsForGroup } from "@/lib/settlements";
 
 type Props = { params: Promise<{ groupId: string }> };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default async function GroupBalancesPage({ params }: Props) {
   const { groupId } = await params;
   await requireGroupMember(groupId);
@@ -148,7 +155,7 @@ export default async function GroupBalancesPage({ params }: Props) {
                     {s.note ? ` (${s.note})` : ""}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {s.date.toISOString().slice(0, 10)}
+                    {toLocalDateString(s.date)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

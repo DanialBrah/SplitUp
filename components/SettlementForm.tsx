@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 
 type MemberOption = { id: string; name: string };
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 type SettlementFormProps = {
   groupId: string;
   members: MemberOption[];
@@ -15,7 +22,7 @@ export function SettlementForm({ groupId, members }: SettlementFormProps) {
   const [fromUserId, setFromUserId] = useState(members[0]?.id ?? "");
   const [toUserId, setToUserId] = useState(members[1]?.id ?? members[0]?.id ?? "");
   const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(toLocalDateString(new Date()));
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);

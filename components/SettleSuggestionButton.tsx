@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { centsToDollars } from "@/lib/money";
 
+function toLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 type SettleSuggestionButtonProps = {
   groupId: string;
   fromUserId: string;
@@ -32,7 +39,7 @@ export function SettleSuggestionButton({
           fromUserId,
           toUserId,
           amount: centsToDollars(amountCents),
-          date: new Date().toISOString().slice(0, 10),
+          date: toLocalDateString(new Date()),
           note: "Debt simplification suggestion",
         }),
       });
